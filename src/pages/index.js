@@ -23,20 +23,15 @@ const JUDGE_SYSTEM = `Ты — Судья-ИИ, нейтральный арби�
 Ответь строго в JSON: {"verdict": "текст оценки", "logosScore": число, "emotionScore": число, "winner": "Логос" или "Эмоция" или "Ничья"}`;
 
 // ─── API Call ─────────────────────────────────────────────────────────────────
-async function callClaude(systemPrompt, userMessage) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+async function callAI(role, systemPrompt, userMessage) {
+  const response = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
-    }),
+    body: JSON.stringify({ role, system: systemPrompt, userMessage }),
   });
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content?.map((b) => b.text || "").join("") || "";
+  if (data.error) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
+  return data.text || "";
 }
 
 function parseJudge(text) {
@@ -336,7 +331,7 @@ export default function Home() {
         .replace("{{TOPIC}}", t)
         .replace("{{HISTORY}}", logosHistory || "Ничего");
       try {
-        const logosText = await callClaude(logosPrompt, emotionCtx);
+        const logosText = await callAI("logos", logosPrompt, emotionCtx);
         if (stopRef.current) break;
         const words = countWords(logosText);
         ls = {
@@ -363,7 +358,7 @@ export default function Home() {
         .replace("{{TOPIC}}", t)
         .replace("{{HISTORY}}", emotionHistory || "Ничего");
       try {
-        const emotionText = await callClaude(emotionPrompt, logosCtx);
+        const emotionText = await callAI("emotion", emotionPrompt, logosCtx);
         if (stopRef.current) break;
         const words = countWords(emotionText);
         ls = {
@@ -389,7 +384,7 @@ export default function Home() {
           .replace("{{LOGOS_LAST}}", history.logos[history.logos.length - 1] || "")
           .replace("{{EMOTION_LAST}}", history.emotion[history.emotion.length - 1] || "");
         try {
-          const judgeText = await callClaude(judgePrompt, "Оцени этот раунд");
+          const judgeText = await callAI("judge", judgePrompt, "Оцени этот раунд");
           const jd = parseJudge(judgeText);
           setLogosScore(jd.logosScore);
           setEmotionScore(jd.emotionScore);
@@ -409,7 +404,7 @@ export default function Home() {
         .replace("{{LOGOS_LAST}}", history.logos[history.logos.length - 1] || "")
         .replace("{{EMOTION_LAST}}", history.emotion[history.emotion.length - 1] || "");
       try {
-        const judgeText = await callClaude(judgePrompt, "Дай финальный вердикт");
+        const judgeText = await callAI("judge", judgePrompt, "Дай финальный вердикт");
         const jd = parseJudge(judgeText);
         setLogosScore(jd.logosScore);
         setEmotionScore(jd.emotionScore);
@@ -462,6 +457,25 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        {/* ── SETUP BANNER ─────────────────────────────────────────────── */}
+        <div className="setup-banner">
+          <span style={{fontSize:16}}>🔑</span>
+          <span>
+            Нужны бесплатные API ключи:&nbsp;
+            <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{color:"#a78bfa"}}>
+              Groq (Логос + Эмоция)
+            </a>
+            &nbsp;и&nbsp;
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{color:"#34d399"}}>
+              Gemini (Судья)
+            </a>
+            &nbsp;→ добавь в Vercel: Settings → Environment Variables →&nbsp;
+            <code style={{background:"#ffffff10",padding:"1px 6px",borderRadius:4,fontSize:11}}>GROQ_API_KEY</code>
+            &nbsp;и&nbsp;
+            <code style={{background:"#ffffff10",padding:"1px 6px",borderRadius:4,fontSize:11}}>GEMINI_API_KEY</code>
+          </span>
+        </div>
 
         {/* ── TOPIC BAR ──────────────────────────────────────────────────── */}
         <div className="topic-bar">
@@ -1073,6 +1087,20 @@ export default function Home() {
           padding: 14px 12px;
           flex: 1;
         }
+
+        /* ── Setup banner ── */
+        .setup-banner {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: #0d0f1f;
+          border-bottom: 1px solid #7c3aed30;
+          padding: 8px 20px;
+          font-size: 12px;
+          color: #888;
+          flex-wrap: wrap;
+        }
+        .setup-banner a:hover { text-decoration: underline; }
 
         /* ── Features bar ── */
         .features-bar {

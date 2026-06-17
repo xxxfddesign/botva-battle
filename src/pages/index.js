@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
 
 // ─── AI System Prompts ───────────────────────────────────────────────────────
-const AI1_SYSTEM = `Ты — Логос, рациональный аналитик-дебатёр. Твой стиль: факты, логика, прагматизм.
+const AI1_SYSTEM = `Ты — Логикус, рациональный аналитик-дебатёр. Твой стиль: факты, логика, прагматизм.
 Ты используешь данные, статистику и аргументы. Говоришь уверенно и структурированно.
 Иногда мягко критикуешь эмоциональный подход собеседника. Отвечай кратко, 2-4 предложения.
 Тема дебатов: {{TOPIC}}. Ты уже сказал: {{HISTORY}}`;
@@ -12,15 +12,7 @@ const AI2_SYSTEM = `Ты — Эмоция, креативный вдохнови
 Иногда иронично реагируешь на сухой рационализм собеседника. Отвечай кратко, 2-4 предложения.
 Тема дебатов: {{TOPIC}}. Ты уже сказал: {{HISTORY}}`;
 
-const JUDGE_SYSTEM = `Ты — Судья-ИИ, нейтральный арбитр. Оцени последний раунд дебатов между Логосом и Эмоцией.
-Тема: {{TOPIC}}.
-Последние реплики:
-Логос: {{LOGOS_LAST}}
-Эмоция: {{EMOTION_LAST}}
-
-Дай короткую оценку (2-3 предложения): кто был убедительнее в этом раунде и почему.
-Также обнови счёт убедительности от 0 до 100 для каждого (суммарно не обязательно 100).
-Ответь строго в JSON: {"verdict": "текст оценки", "logosScore": число, "emotionScore": число, "winner": "Логос" или "Эмоция" или "Ничья"}`;
+const JUDGE_SYSTEM = `Ты судья дебатов. Тема: {{TOPIC}}. Реплики: Логикус: {{LOGOS_LAST}} | Эмоция: {{EMOTION_LAST}}. Оцени кто убедительнее. ВАЖНО: отвечай ТОЛЬКО валидным JSON без markdown, без пояснений, только JSON объект: {"verdict":"текст 1-2 предложения","logosScore":число от 30 до 90,"emotionScore":число от 30 до 90,"winner":"Логикус" или "Эмоция" или "Ничья"}`;
 
 // ─── API Call ─────────────────────────────────────────────────────────────────
 async function callAI(role, systemPrompt, userMessage) {
@@ -36,10 +28,25 @@ async function callAI(role, systemPrompt, userMessage) {
 
 function parseJudge(text) {
   try {
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
+    // Try extracting JSON from anywhere in the text
+    const jsonMatch = text.match(/\{[\s\S]*"verdict"[\s\S]*\}/);
+    const clean = jsonMatch ? jsonMatch[0] : text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+    // Validate required fields exist and are numbers
+    const ls = typeof parsed.logosScore === "number" ? parsed.logosScore : 50;
+    const es = typeof parsed.emotionScore === "number" ? parsed.emotionScore : 50;
+    return { 
+      verdict: parsed.verdict || text, 
+      logosScore: Math.max(1, Math.min(99, ls)),
+      emotionScore: Math.max(1, Math.min(99, es)),
+      winner: parsed.winner || "Ничья"
+    };
   } catch {
-    return { verdict: text, logosScore: 65, emotionScore: 55, winner: "Ничья" };
+    // Try to extract numbers from plain text as fallback
+    const nums = text.match(/\d+/g);
+    const ls = nums && nums[0] ? Math.min(99, parseInt(nums[0])) : 55;
+    const es = nums && nums[1] ? Math.min(99, parseInt(nums[1])) : 45;
+    return { verdict: text, logosScore: ls, emotionScore: es, winner: "Ничья" };
   }
 }
 
@@ -75,7 +82,7 @@ function TypingDots({ color }) {
 function Message({ msg }) {
   const isLogos = msg.role === "logos";
   const color = isLogos ? "#4fc3f7" : "#f472b6";
-  const name = isLogos ? "Логос" : "Эмоция";
+  const name = isLogos ? "Логикус" : "Эмоция";
   const avatarSrc = isLogos ? "/logos.jpg" : "/emotion.jpg";
 
   return (
@@ -458,25 +465,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* ── SETUP BANNER ─────────────────────────────────────────────── */}
-        <div className="setup-banner">
-          <span style={{fontSize:16}}>🔑</span>
-          <span>
-            Нужны бесплатные API ключи:&nbsp;
-            <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{color:"#a78bfa"}}>
-              Groq (Логос + Эмоция)
-            </a>
-            &nbsp;и&nbsp;
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{color:"#34d399"}}>
-              Gemini (Судья)
-            </a>
-            &nbsp;→ добавь в Vercel: Settings → Environment Variables →&nbsp;
-            <code style={{background:"#ffffff10",padding:"1px 6px",borderRadius:4,fontSize:11}}>GROQ_API_KEY</code>
-            &nbsp;и&nbsp;
-            <code style={{background:"#ffffff10",padding:"1px 6px",borderRadius:4,fontSize:11}}>GEMINI_API_KEY</code>
-          </span>
-        </div>
-
         {/* ── TOPIC BAR ──────────────────────────────────────────────────── */}
         <div className="topic-bar">
           <div className="topic-label">ТЕМА СПОРА</div>
@@ -510,7 +498,7 @@ export default function Home() {
           <aside className="side-panel side-logos">
             <CharacterCard
               avatarSrc="/logos.jpg"
-              name="Логос"
+              name="Логикус"
               role="Рациональный аналитик"
               desc="Фокус на фактах, логике и прагматичных решениях."
               color="#4fc3f7"
@@ -567,7 +555,7 @@ export default function Home() {
                     border: "2px solid #4fc3f7", overflow: "hidden",
                     boxShadow: "0 0 14px #4fc3f750", flexShrink: 0,
                   }}>
-                    <img src="/logos.jpg" alt="Логос" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+                    <img src="/logos.jpg" alt="Логикус" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
                   </div>
                   <div style={{ background: "#0d2137", border: "1px solid #4fc3f720", borderRadius: "4px 16px 16px 16px" }}>
                     <TypingDots color="#4fc3f7" />
@@ -709,7 +697,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div style={{ fontSize: 28 }}>
-                  {winner === "Логос" ? (
+                  {winner === "Логикус" ? (
                     <img src="/trophy.jpg" alt="trophy" style={{ width: 36, height: 36, objectFit: "contain" }} />
                   ) : winner === "Эмоция" ? "🥈" : "⚖️"}
                 </div>
@@ -1087,20 +1075,6 @@ export default function Home() {
           padding: 14px 12px;
           flex: 1;
         }
-
-        /* ── Setup banner ── */
-        .setup-banner {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: #0d0f1f;
-          border-bottom: 1px solid #7c3aed30;
-          padding: 8px 20px;
-          font-size: 12px;
-          color: #888;
-          flex-wrap: wrap;
-        }
-        .setup-banner a:hover { text-decoration: underline; }
 
         /* ── Features bar ── */
         .features-bar {

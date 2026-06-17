@@ -494,7 +494,7 @@ export default function Home() {
         {/* ── MAIN GRID ──────────────────────────────────────────────────── */}
         <div className="main-grid">
 
-          {/* LEFT: Логос */}
+          {/* LEFT: Логикус */}
           <aside className="side-panel side-logos">
             <CharacterCard
               avatarSrc="/logos.jpg"
@@ -691,7 +691,7 @@ export default function Home() {
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "#4fc3f7", fontWeight: 700, marginBottom: 4 }}>Логос</div>
+                  <div style={{ fontSize: 11, color: "#4fc3f7", fontWeight: 700, marginBottom: 4 }}>Логикус</div>
                   <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 22, fontWeight: 900, color: "#4fc3f7" }}>
                     {logosScore}%
                   </div>
@@ -792,7 +792,7 @@ export default function Home() {
               </div>
               {[
                 { n: "1", text: "Введи тему для спора и нажми «Начать спор»" },
-                { n: "2", text: "Логос отвечает первым — используя факты и логику" },
+                { n: "2", text: "Логикус отвечает первым — используя факты и логику" },
                 { n: "3", text: "Эмоция возражает — с позиции творчества и вдохновения" },
                 { n: "4", text: "После каждых 2 раундов Судья-ИИ оценивает убедительность" },
                 { n: "5", text: "По итогам 4 раундов объявляется победитель" },
